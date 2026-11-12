@@ -5,6 +5,7 @@ import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "./Logo";
 import { ThemeToggle } from "../custom/ThemeToggle";
+import { SignInButton } from "@clerk/nextjs";
 
 const links = [
   { href: "/#features", label: "Features" },
