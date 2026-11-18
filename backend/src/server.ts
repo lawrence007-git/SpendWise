@@ -1,14 +1,26 @@
 import "dotenv/config"; // FIRST line: loads .env so the settings exist
-import Fastify from "fastify";
 import cors from "@fastify/cors";
 import { clerkPlugin } from "@clerk/fastify";
 import { pool } from "./db/pool.js";
 import { requireUser } from "./auth/requireUser.js";
+import { accountRoutes } from "./routes/account.js";
+import Fastify, { type FastifyError } from "fastify";
 
 const app = Fastify({ logger: true });
 
-await app.register(cors, { origin: process.env.APP_ORIGIN });
+app.setErrorHandler((err: FastifyError, req, reply) => {
+  req.log.error(err);
+  const status = err.statusCode && err.statusCode < 500 ? err.statusCode : 500;
+  reply.status(status).send({
+    error: status === 500 ? "Internal server error" : err.message,
+  });
+});
 
+await app.register(cors, {
+  origin: process.env.APP_ORIGIN ?? "http://localhost:3000",
+  allowedHeaders: ["Content-Type", "Authorization"],
+  methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+});
 await app.register(clerkPlugin);
 
 app.get("/health", async () => ({ ok: true }));
@@ -21,5 +33,9 @@ app.get("/db-check", async () => {
 app.get("/me", { preHandler: requireUser }, async (req) => {
   return req.currentUser;
 });
+await app.register(accountRoutes);
 
-await app.listen({ port: 4000 });
+await app.listen({
+  port: Number(process.env.PORT ?? 4000),
+  host: "0.0.0.0",
+});

@@ -25,5 +25,8 @@ export async function requireUser(req: FastifyRequest, reply: FastifyReply) {
     .from(users)
     .where(eq(users.clerkUserId, userId));
 
+  if (!user) {
+    return reply.status(500).send({ error: "Could not load server" });
+  }
   req.currentUser = user;
 }

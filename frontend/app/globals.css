@@ -295,6 +295,43 @@
     transparent 100%
   );
 }
+@utility tone-primary {
+  --tone: var(--primary);
+}
+@utility tone-success {
+  --tone: var(--success);
+}
+@utility tone-warning {
+  --tone: var(--warning);
+}
+@utility tone-destructive {
+  --tone: var(--destructive);
+}
+@utility tone-glow {
+  --tone: var(--chart-2);
+}
+@utility tone-amber {
+  --tone: var(--chart-3);
+}
+
+/* 2. Surfaces that follow the tone */
+@utility tone-icon {
+  background-color: color-mix(in oklab, var(--tone) 12%, transparent);
+  color: var(--tone);
+}
+@utility tone-badge {
+  background-color: color-mix(in oklab, var(--tone) 12%, transparent);
+  color: var(--tone);
+}
+@utility tone-wave {
+  color: color-mix(in oklab, var(--tone) 18%, transparent);
+}
+@utility tone-text {
+  color: var(--tone);
+}
+@utility tone-border {
+  border-color: color-mix(in oklab, var(--tone) 35%, transparent);
+}
 
 @utility animate-delay-100 {
   animation-delay: 0.1s;

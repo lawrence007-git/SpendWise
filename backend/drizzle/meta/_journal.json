@@ -8,6 +8,27 @@
       "when": 1794374077624,
       "tag": "0000_lame_legion",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794886122203,
+      "tag": "0001_chilly_magdalene",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794888322805,
+      "tag": "0002_parched_skullbuster",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794969145259,
+      "tag": "0003_short_queen_noir",
+      "breakpoints": true
     }
   ]
 }
