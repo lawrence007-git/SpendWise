@@ -295,6 +295,43 @@
     transparent 100%
   );
 }
+
+/* Extends styles/tones.css with the extra category colors and a few surfaces.
+   Import it right after tones.css in your global stylesheet. */
+@utility tone-violet {
+  --tone: hsl(262 70% 55%);
+  &:is(.dark *) {
+    --tone: hsl(262 85% 75%);
+  }
+}
+@utility tone-blue {
+  --tone: hsl(217 85% 52%);
+  &:is(.dark *) {
+    --tone: hsl(213 95% 70%);
+  }
+}
+@utility tone-pink {
+  --tone: hsl(330 75% 52%);
+  &:is(.dark *) {
+    --tone: hsl(330 85% 72%);
+  }
+}
+
+/* solid fill in the tone color (dots, progress bars, swatches) */
+@utility tone-dot {
+  background-color: var(--tone);
+}
+
+/* soft tinted card surface */
+@utility tone-surface {
+  background-image: linear-gradient(
+    135deg,
+    color-mix(in oklab, var(--tone) 10%, var(--card)),
+    var(--card) 70%
+  );
+  border-color: color-mix(in oklab, var(--tone) 25%, var(--border));
+}
+
 @utility tone-primary {
   --tone: var(--primary);
 }

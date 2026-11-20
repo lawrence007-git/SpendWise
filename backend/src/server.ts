@@ -4,6 +4,7 @@ import { clerkPlugin } from "@clerk/fastify";
 import { pool } from "./db/pool.js";
 import { requireUser } from "./auth/requireUser.js";
 import { accountRoutes } from "./routes/account.js";
+import { transactionRoutes } from "./routes/transaction.js";
 import Fastify, { type FastifyError } from "fastify";
 
 const app = Fastify({ logger: true });
@@ -34,6 +35,7 @@ app.get("/me", { preHandler: requireUser }, async (req) => {
   return req.currentUser;
 });
 await app.register(accountRoutes);
+await app.register(transactionRoutes);
 
 await app.listen({
   port: Number(process.env.PORT ?? 4000),

@@ -8,52 +8,32 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { KIND, TONE } from "@/lib/account";
+import { KIND } from "@/lib/account";
 import { CATEGORY_ICONS, TYPE_STYLE } from "@/lib/transaction";
-import type { Category, Transaction, TxAccount } from "@/lib/types";
+import type { Transaction, TxAccount } from "@/lib/types";
 import { formatDate, signedAmount } from "@/lib/transaction";
 
 type Props = {
   transaction: Transaction;
-  category?: Category;
   account?: TxAccount;
   onDelete: (id: string) => void;
 };
 
-export function TransactionRow({
-  transaction: t,
-  category,
-  account,
-  onDelete,
-}: Props) {
-  const RowIcon = category
-    ? CATEGORY_ICONS[category.icon]
-    : CATEGORY_ICONS.receipt;
-  const AccIcon = account ? KIND[account.kind].icon : Wallet;
-  const type = TYPE_STYLE[t.type];
+export function TransactionRow({ transaction: t, account, onDelete }: Props) {
+  const RowIcon = CATEGORY_ICONS.receipt;
+  const AccIcon = account ? KIND[account.accountType].icon : Wallet;
+  const type = TYPE_STYLE[t.transactionType];
 
   return (
     <TableRow>
       <TableCell className="whitespace-nowrap text-muted-foreground">
-        {formatDate(t.date)}
+        {formatDate(t.transactionDate)}
       </TableCell>
       <TableCell>
         <span className="flex items-center gap-2 font-medium">
           <RowIcon className="h-4 w-4 shrink-0 text-primary" />
           {t.description}
         </span>
-      </TableCell>
-      <TableCell>
-        {category && (
-          <span
-            className={cn(
-              TONE[category.tone],
-              "tone-badge rounded-full px-2.5 py-0.5 text-xs font-medium",
-            )}
-          >
-            {category.name}
-          </span>
-        )}
       </TableCell>
       <TableCell>
         <span className="flex items-center gap-2">
@@ -74,7 +54,7 @@ export function TransactionRow({
       <TableCell
         className={cn(
           "text-right font-semibold tabular-nums",
-          t.type === "income" ? "text-success" : "text-destructive",
+          t.transactionType === "income" ? "text-success" : "text-destructive",
         )}
       >
         {signedAmount(t)}

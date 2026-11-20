@@ -20,13 +20,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { TYPE_FILTERS } from "@/lib/transaction";
-import type { Category, Transaction, TxAccount, TxType } from "@/lib/types";
+import type { Transaction, TxAccount, TxType } from "@/lib/types";
 import { AddTransactionDialog } from "./TransactionDialog";
 import { TransactionRow } from "./TransactionRow";
 
 type Props = {
   transactions: Transaction[];
-  categories: Category[];
   accounts: TxAccount[];
   query: string;
   onQueryChange: (v: string) => void;
@@ -78,11 +77,7 @@ export function TransactionsTable(p: Props) {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <AddTransactionDialog
-          categories={p.categories}
-          accounts={p.accounts}
-          onAdd={p.onAdd}
-        />
+        <AddTransactionDialog accounts={p.accounts} onAdd={p.onAdd} />
       </div>
 
       <Table>
@@ -90,7 +85,7 @@ export function TransactionsTable(p: Props) {
           <TableRow className="bg-muted/50 hover:bg-muted/50">
             <TableHead>Date</TableHead>
             <TableHead>Description</TableHead>
-            <TableHead>Category</TableHead>
+
             <TableHead>Account</TableHead>
             <TableHead>Type</TableHead>
             <TableHead className="text-right">Amount</TableHead>
@@ -102,7 +97,6 @@ export function TransactionsTable(p: Props) {
             <TransactionRow
               key={t.id}
               transaction={t}
-              category={p.categories.find((c) => c.id === t.categoryId)}
               account={p.accounts.find((a) => a.id === t.accountId)}
               onDelete={p.onDelete}
             />
@@ -110,7 +104,7 @@ export function TransactionsTable(p: Props) {
           {p.transactions.length === 0 && (
             <TableRow>
               <TableCell
-                colSpan={7}
+                colSpan={6}
                 className="py-10 text-center text-muted-foreground"
               >
                 No transactions found.

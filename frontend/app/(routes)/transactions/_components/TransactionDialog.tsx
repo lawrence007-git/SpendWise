@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useApi } from "@/lib/api";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,14 +23,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { toMinor } from "@/lib/account";
-import { TYPE_STYLE } from "@/lib/transaction";
-import { addTransactionSchema } from "@/lib/transaction";
-import type { Category, Transaction, TxAccount, TxType } from "@/lib/types";
-import { todayISO } from "@/lib/transaction";
+import { addTransactionSchema, todayISO, TYPE_STYLE } from "@/lib/transaction";
+import type { Transaction, TxAccount, TxType } from "@/lib/types";
 
 type Props = {
-  categories: Category[];
   accounts: TxAccount[];
   onAdd: (t: Transaction) => void;
 };
@@ -38,18 +35,18 @@ const empty = () => ({
   type: "expense" as TxType,
   description: "",
   amount: "",
-  categoryId: "",
   accountId: "",
   date: "",
 });
 
-export function AddTransactionDialog({ categories, accounts, onAdd }: Props) {
+export function AddTransactionDialog({ accounts, onAdd }: Props) {
+  const api = useApi();
   const [open, setOpen] = useState(false);
   const [f, setF] = useState(empty);
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
-  const cats = categories.filter((c) => !c.type || c.type === f.type);
-  const blocked = accounts.length === 0 || categories.length === 0;
+  const blocked = accounts.length === 0;
 
   useEffect(() => {
     if (open) {
@@ -57,21 +54,31 @@ export function AddTransactionDialog({ categories, accounts, onAdd }: Props) {
     }
   }, [open]);
 
-  const submit = () => {
+  const submit = async () => {
     const p = addTransactionSchema.safeParse(f);
     if (!p.success) return setError(p.error.issues[0].message);
-    onAdd({
-      id: crypto.randomUUID(),
-      date: p.data.date,
-      description: p.data.description,
-      categoryId: p.data.categoryId,
-      accountId: p.data.accountId,
-      type: p.data.type,
-      amountMinor: toMinor(p.data.amount),
-    });
-    setOpen(false);
-    setF(empty());
+
+    setSaving(true);
     setError(null);
+    try {
+      const created = await api<Transaction>("/transactions", {
+        method: "POST",
+        body: JSON.stringify({
+          accountId: p.data.accountId,
+          transactionType: p.data.type, // form `type` -> API `transactionType`
+          amount: p.data.amount, // string, as the API expects
+          transactionDate: p.data.date, // form `date` -> API `transactionDate`
+          description: p.data.description,
+        }),
+      });
+      onAdd(created); // the response is already a Transaction
+      setOpen(false);
+      setF(empty());
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -101,7 +108,7 @@ export function AddTransactionDialog({ categories, accounts, onAdd }: Props) {
             <button
               key={t}
               type="button"
-              onClick={() => setF({ ...f, type: t, categoryId: "" })}
+              onClick={() => setF({ ...f, type: t })}
               className={cn(
                 "rounded-lg border py-2 text-sm font-medium transition",
                 f.type === t
@@ -146,43 +153,23 @@ export function AddTransactionDialog({ categories, accounts, onAdd }: Props) {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-2">
-            <Label>Category</Label>
-            <Select
-              value={f.categoryId}
-              onValueChange={(v) => setF({ ...f, categoryId: v })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select" />
-              </SelectTrigger>
-              <SelectContent>
-                {cats.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Account</Label>
-            <Select
-              value={f.accountId}
-              onValueChange={(v) => setF({ ...f, accountId: v })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select" />
-              </SelectTrigger>
-              <SelectContent>
-                {accounts.map((a) => (
-                  <SelectItem key={a.id} value={a.id}>
-                    {a.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <div className="space-y-2">
+          <Label>Account</Label>
+          <Select
+            value={f.accountId}
+            onValueChange={(v) => setF({ ...f, accountId: v })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select Account" />
+            </SelectTrigger>
+            <SelectContent>
+              {accounts.map((a) => (
+                <SelectItem key={a.id} value={a.id}>
+                  {a.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {error && (
@@ -194,9 +181,10 @@ export function AddTransactionDialog({ categories, accounts, onAdd }: Props) {
         <DialogFooter>
           <Button
             onClick={submit}
+            disabled={saving}
             className="bg-gradient-brand text-primary-foreground hover:opacity-90"
           >
-            Save transaction
+            {saving ? "Saving..." : "Save transaction"}
           </Button>
         </DialogFooter>
       </DialogContent>

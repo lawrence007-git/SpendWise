@@ -11,7 +11,6 @@ const createAccountSchema = z.object({
     .trim()
     .min(1, "Account name is required")
     .max(100, "Name is too long"),
-  // Was a free-form string; the UI crashes on unknown kinds, so restrict it.
   accountType: z.enum(["bank", "cash", "ewallet"], {
     message: "Account type must be bank, cash or ewallet",
   }),
@@ -33,7 +32,6 @@ const accountIdParamSchema = z.object({
 });
 
 export async function accountRoutes(app: FastifyInstance) {
-  // List all my active accounts
   app.get("/accounts", { preHandler: requireUser }, async (req, reply) => {
     const userId = req.currentUser.id;
 
@@ -73,7 +71,6 @@ export async function accountRoutes(app: FastifyInstance) {
 
     const validationResult = createAccountSchema.safeParse(req.body);
     if (!validationResult.success) {
-      // Was 404; invalid input is a 400.
       return reply.status(400).send({
         error: "Validation Failed",
         details: z.flattenError(validationResult.error),
@@ -113,7 +110,7 @@ export async function accountRoutes(app: FastifyInstance) {
           and(
             eq(accounts.id, id),
             eq(accounts.ownerId, userId),
-            isNull(accounts.archiveAt), // don't re-archive / overwrite the timestamp
+            isNull(accounts.archiveAt),
           ),
         )
         .returning();

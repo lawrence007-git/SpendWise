@@ -26,34 +26,68 @@ export type Activity = {
 };
 
 export type TxType = "income" | "expense";
-export type IconKey =
-  | "cart"
-  | "utensils"
-  | "download"
-  | "car"
-  | "zap"
-  | "coffee"
-  | "home"
-  | "heart"
-  | "gift"
-  | "receipt";
-
-export type Category = {
-  id: string;
-  name: string;
-  tone: Tone;
-  icon: IconKey; // string key so it can cross the server -> client boundary
-  type?: TxType; // optional: limit the category to income or expense
-};
 
 export type TxAccount = Pick<Account, "id" | "name" | "accountType">;
 
 export type Transaction = {
   id: string;
-  date: string; // YYYY-MM-DD
-  description: string;
-  categoryId: string;
   accountId: string;
-  type: TxType;
-  amountMinor: number; // always positive; `type` decides the sign
+  transactionType: TxType;
+  amount: string; // "250.00", a string like openingBalance
+  currency: string;
+  transactionDate: string; // "2026-11-19"
+  description: string;
+  notes: string | null;
+  createdAt: string;
 };
+
+export type CategoryColor =
+  | "primary"
+  | "success"
+  | "glow"
+  | "amber"
+  | "destructive"
+  | "violet"
+  | "blue"
+  | "pink";
+
+export type CategoryIcon =
+  | "cart"
+  | "utensils"
+  | "home"
+  | "car"
+  | "zap"
+  | "briefcase"
+  | "laptop"
+  | "gift"
+  | "heart"
+  | "plane"
+  | "book"
+  | "coffee"
+  | "wallet"
+  | "music"
+  | "paw"
+  | "receipt";
+
+export type Category = {
+  id: string;
+  name: string;
+  transactionType: TxType;
+  color: CategoryColor;
+  icon: CategoryIcon;
+  archivedAt: string | null;
+  /** Aggregates, e.g. from GET /reports/categories. Optional. */
+  transactionCount?: number;
+  totalMinor?: number; // integer centavos
+};
+
+/** What the create/edit form submits. */
+export type CategoryInput = Pick<
+  Category,
+  "name" | "transactionType" | "color" | "icon"
+>;
+
+/* ---------- UI state ---------- */
+export type Tab = "all" | TxType;
+export type SortKey = "name" | "usage" | "total";
+export type ViewMode = "grid" | "list";

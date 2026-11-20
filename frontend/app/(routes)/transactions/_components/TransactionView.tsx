@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import type { Category, Transaction, TxAccount, TxType } from "@/lib/types";
+import { useMemo, useState, useCallback, useEffect } from "react";
+import { useAuth } from "@clerk/nextjs";
+import { useApi } from "@/lib/api";
+import type { Transaction, TxAccount, TxType } from "@/lib/types";
 import { filterTransactions, summarize } from "@/lib/transaction";
-import { HeroIllustration } from "./TransactionHero";
 import { RecurringCard } from "./RecurringCard";
 import { SpendingInsights } from "./Insight";
 import { SummaryCards, type Trends } from "./SummaryCard";
@@ -11,9 +12,6 @@ import { TransactionsHeader } from "./TransactionHeader";
 import { TransactionsTable } from "./TransactionTable";
 
 type Props = {
-  initialTransactions: Transaction[];
-  categories: Category[];
-  accounts: TxAccount[];
   trends?: Trends;
   budgetMinor?: number;
   spentMinor?: number;
@@ -23,9 +21,6 @@ type Props = {
 };
 
 export function TransactionsView({
-  initialTransactions,
-  categories,
-  accounts,
   trends,
   budgetMinor,
   spentMinor,
@@ -33,18 +28,51 @@ export function TransactionsView({
   rowLimit = 6,
   onCreateRule,
 }: Props) {
-  const [transactions, setTransactions] = useState(initialTransactions);
+  const { isLoaded, isSignedIn } = useAuth();
+  const api = useApi();
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [accounts, setAccounts] = useState<TxAccount[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<TxType | "all">("all");
+
+  const load = useCallback(async () => {
+    try {
+      const [tx, accs] = await Promise.all([
+        api<Transaction[]>("/transactions?limit=100"),
+        api<TxAccount[]>("/accounts"),
+      ]);
+      setTransactions(tx);
+      setAccounts(accs);
+      setError(null);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }, [api]);
+
+  useEffect(() => {
+    if (isLoaded && isSignedIn) load();
+  }, [isLoaded, isSignedIn, load]);
+
+  const deleteTransaction = async (id: string) => {
+    const previous = transactions;
+    setTransactions((xs) => xs.filter((t) => t.id !== id)); // optimistic
+    try {
+      await api(`/transactions/${id}`, { method: "DELETE" });
+    } catch (e) {
+      setTransactions(previous); // roll back
+      setError((e as Error).message);
+    }
+  };
 
   const totals = useMemo(() => summarize(transactions), [transactions]);
   const rows = useMemo(
     () =>
-      filterTransactions(transactions, categories, query, typeFilter).slice(
-        0,
-        rowLimit,
-      ),
-    [transactions, categories, query, typeFilter, rowLimit],
+      filterTransactions(transactions, query, typeFilter).slice(0, rowLimit),
+    [transactions, query, typeFilter, rowLimit],
   );
 
   return (
@@ -52,24 +80,30 @@ export function TransactionsView({
       <div className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 rounded-full bg-primary-glow/20 blur-3xl" />
       <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-grid opacity-60" />
 
-      <HeroIllustration />
-
       <TransactionsHeader />
       <SummaryCards {...totals} trends={trends} />
+
+      {error && (
+        <p role="alert" className="relative mt-4 text-sm text-destructive">
+          {error}
+        </p>
+      )}
+      {loading && (
+        <p className="relative mt-4 text-sm text-muted-foreground">
+          Loading transactions...
+        </p>
+      )}
 
       <div className="relative mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_21rem]">
         <TransactionsTable
           transactions={rows}
-          categories={categories}
           accounts={accounts}
           query={query}
           onQueryChange={setQuery}
           typeFilter={typeFilter}
           onTypeFilterChange={setTypeFilter}
           onAdd={(t) => setTransactions((xs) => [t, ...xs])}
-          onDelete={(id) =>
-            setTransactions((xs) => xs.filter((t) => t.id !== id))
-          }
+          onDelete={deleteTransaction}
           viewAllHref={viewAllHref}
         />
         <aside className="space-y-5">

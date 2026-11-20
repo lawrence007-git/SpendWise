@@ -12,14 +12,16 @@ export function TransactionsHeader() {
         <span className="font-medium text-foreground">Transactions</span>
       </nav>
 
-      <header className="relative mt-4 min-h-[8rem] animate-fade-up">
+      <header className="mt-4 min-h-[8rem]">
         <HeroIllustration />
-        <h1 className="relative text-5xl font-extrabold tracking-tight">
-          Transactions
-        </h1>
-        <p className="relative mt-2 text-muted-foreground">
-          View, manage, and track your financial activity.
-        </p>
+        <div className="relative anime-fade-up">
+          <h1 className="relative text-5xl font-extrabold tracking-tight">
+            Transactions
+          </h1>
+          <p className="relative mt-2 text-muted-foreground">
+            View, manage, and track your financial activity.
+          </p>
+        </div>
       </header>
     </>
   );

@@ -29,6 +29,13 @@
       "when": 1794969145259,
       "tag": "0003_short_queen_noir",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795059665118,
+      "tag": "0004_demonic_puma",
+      "breakpoints": true
     }
   ]
 }
