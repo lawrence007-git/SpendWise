@@ -9,6 +9,7 @@ import { RecurringCard } from "./RecurringCard";
 import { SpendingInsights } from "./Insight";
 import { SummaryCards, type Trends } from "./SummaryCard";
 import { TransactionsHeader } from "./TransactionHeader";
+import { AddTransactionDialog } from "./TransactionDialog";
 import { TransactionsTable } from "./TransactionTable";
 
 type Props = {
@@ -36,6 +37,21 @@ export function TransactionsView({
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<TxType | "all">("all");
+  const [dialog, setDialog] = useState<{
+    open: boolean;
+    transaction: Transaction | null;
+  }>({ open: false, transaction: null });
+
+  const saveTransaction = (saved: Transaction) =>
+    setTransactions((xs) =>
+      xs.some((t) => t.id === saved.id)
+        ? xs.map((t) => (t.id === saved.id ? { ...t, ...saved } : t))
+        : [saved, ...xs],
+    );
+
+  const openCreate = () => setDialog({ open: true, transaction: null });
+  const openEdit = (t: Transaction) =>
+    setDialog({ open: true, transaction: t });
 
   const load = useCallback(async () => {
     try {
@@ -102,10 +118,20 @@ export function TransactionsView({
           onQueryChange={setQuery}
           typeFilter={typeFilter}
           onTypeFilterChange={setTypeFilter}
-          onAdd={(t) => setTransactions((xs) => [t, ...xs])}
+          onAdd={openCreate}
+          onEdit={openEdit}
           onDelete={deleteTransaction}
           viewAllHref={viewAllHref}
         />
+
+        <AddTransactionDialog
+          open={dialog.open}
+          onOpenChange={(open) => setDialog((d) => ({ ...d, open }))}
+          transaction={dialog.transaction}
+          accounts={accounts}
+          onSaved={saveTransaction}
+        />
+
         <aside className="space-y-5">
           <SpendingInsights budgetMinor={budgetMinor} spentMinor={spentMinor} />
           <RecurringCard onCreateRule={onCreateRule} />

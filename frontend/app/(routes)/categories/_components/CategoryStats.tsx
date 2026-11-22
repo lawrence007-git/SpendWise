@@ -1,5 +1,6 @@
 import { ArrowUp, LayoutGrid, PieChart, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Wave } from "./CategoryWave"; // adjust to wherever your Wave component lives
 
 type Props = {
   total: number;
@@ -54,10 +55,13 @@ function Stat({ tone, icon: Icon, label, value, note, bar }: StatProps) {
     <div
       className={cn(
         tone,
-        "tone-surface rounded-2xl border p-5 shadow-soft transition hover:-translate-y-0.5 hover:shadow-elevated",
+        "tone-surface relative overflow-hidden rounded-2xl border p-5 shadow-soft transition hover:-translate-y-0.5 hover:shadow-elevated",
       )}
     >
-      <div className="flex items-center gap-4">
+      {/* tinted by the card's tone; kept faint so the text stays readable */}
+      <Wave className="tone-text opacity-20" />
+
+      <div className="relative flex items-center gap-4">
         <div className="tone-icon grid h-14 w-14 shrink-0 place-items-center rounded-full">
           <Icon className="h-6 w-6" />
         </div>
@@ -71,7 +75,7 @@ function Stat({ tone, icon: Icon, label, value, note, bar }: StatProps) {
       </div>
       {bar !== undefined && (
         <div
-          className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-muted"
+          className="relative mt-3 h-1.5 w-full overflow-hidden rounded-full bg-muted"
           role="presentation"
         >
           <div

@@ -124,7 +124,7 @@ export const isDuplicate = (
   );
 
 export function summarize(cats: Category[]) {
-  const active = cats.filter((c) => !c.archivedAt);
+  const active = cats.filter((c) => !c.archiveAt);
   const expense = active.filter((c) => c.transactionType === "expense").length;
   return {
     total: active.length,
@@ -140,7 +140,7 @@ export function filterCategories(
 ) {
   const q = o.query.trim().toLowerCase();
   return cats
-    .filter((c) => o.showArchived || !c.archivedAt)
+    .filter((c) => o.showArchived || !c.archiveAt)
     .filter((c) => o.tab === "all" || c.transactionType === o.tab)
     .filter((c) => !q || c.name.toLowerCase().includes(q))
     .sort((a, b) => {

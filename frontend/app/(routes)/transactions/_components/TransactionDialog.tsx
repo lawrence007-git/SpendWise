@@ -27,8 +27,11 @@ import { addTransactionSchema, todayISO, TYPE_STYLE } from "@/lib/transaction";
 import type { Transaction, TxAccount, TxType } from "@/lib/types";
 
 type Props = {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  transaction: Transaction | null; // null = create
   accounts: TxAccount[];
-  onAdd: (t: Transaction) => void;
+  onSaved: (t: Transaction) => void;
 };
 
 const empty = () => ({
@@ -39,20 +42,35 @@ const empty = () => ({
   date: "",
 });
 
-export function AddTransactionDialog({ accounts, onAdd }: Props) {
+export function AddTransactionDialog({
+  open,
+  onOpenChange,
+  transaction,
+  accounts,
+  onSaved,
+}: Props) {
   const api = useApi();
-  const [open, setOpen] = useState(false);
   const [f, setF] = useState(empty);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const blocked = accounts.length === 0;
+  const editing = !!transaction;
 
   useEffect(() => {
-    if (open) {
-      setF((prev) => ({ ...prev, date: todayISO() }));
-    }
-  }, [open]);
+    if (!open) return;
+    setF(
+      transaction
+        ? {
+            type: transaction.transactionType,
+            description: transaction.description,
+            amount: String(transaction.amount),
+            accountId: transaction.accountId,
+            date: transaction.transactionDate.slice(0, 10),
+          }
+        : { ...empty(), date: todayISO() },
+    );
+    setError(null);
+  }, [open, transaction]);
 
   const submit = async () => {
     const p = addTransactionSchema.safeParse(f);
@@ -61,18 +79,21 @@ export function AddTransactionDialog({ accounts, onAdd }: Props) {
     setSaving(true);
     setError(null);
     try {
-      const created = await api<Transaction>("/transactions", {
-        method: "POST",
-        body: JSON.stringify({
-          accountId: p.data.accountId,
-          transactionType: p.data.type, // form `type` -> API `transactionType`
-          amount: p.data.amount, // string, as the API expects
-          transactionDate: p.data.date, // form `date` -> API `transactionDate`
-          description: p.data.description,
-        }),
-      });
-      onAdd(created); // the response is already a Transaction
-      setOpen(false);
+      const saved = await api<Transaction>(
+        editing ? `/transactions/${transaction.id}` : "/transactions",
+        {
+          method: editing ? "PATCH" : "POST",
+          body: JSON.stringify({
+            accountId: p.data.accountId,
+            transactionType: p.data.type, // form `type` -> API `transactionType`
+            amount: p.data.amount, // string, as the API expects
+            transactionDate: p.data.date, // form `date` -> API `transactionDate`
+            description: p.data.description,
+          }),
+        },
+      );
+      onSaved(saved); // the response is already a Transaction
+      onOpenChange(false);
       setF(empty());
     } catch (e) {
       setError((e as Error).message);
@@ -82,20 +103,16 @@ export function AddTransactionDialog({ accounts, onAdd }: Props) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button
-          disabled={blocked}
-          className="rounded-lg border-0 bg-gradient-brand px-5 text-primary-foreground shadow-soft hover:opacity-90"
-        >
-          <Plus className="mr-1 h-4 w-4" /> Add Transaction
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent onOpenAutoFocus={(e) => e.preventDefault()}>
         <DialogHeader>
-          <DialogTitle>Add transaction</DialogTitle>
+          <DialogTitle>
+            {editing ? "Edit transaction" : "Add transaction"}
+          </DialogTitle>
           <DialogDescription>
-            Record money coming in or going out.
+            {editing
+              ? "Update the details of this transaction."
+              : "Record money coming in or going out."}
           </DialogDescription>
         </DialogHeader>
 
@@ -110,10 +127,10 @@ export function AddTransactionDialog({ accounts, onAdd }: Props) {
               type="button"
               onClick={() => setF({ ...f, type: t })}
               className={cn(
-                "rounded-lg border py-2 text-sm font-medium transition",
+                "rounded-lg border py-2 text-sm font-medium outline-none ring-0 transition focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0",
                 f.type === t
                   ? cn(TYPE_STYLE[t].tone, "tone-badge tone-border")
-                  : "text-muted-foreground hover:bg-muted",
+                  : "border-transparent text-muted-foreground hover:bg-muted",
               )}
             >
               {TYPE_STYLE[t].label}
@@ -184,7 +201,11 @@ export function AddTransactionDialog({ accounts, onAdd }: Props) {
             disabled={saving}
             className="bg-gradient-brand text-primary-foreground hover:opacity-90"
           >
-            {saving ? "Saving..." : "Save transaction"}
+            {saving
+              ? "Saving..."
+              : editing
+                ? "Save Transaction"
+                : "Save transaction"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -1,16 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
+import { useAuth } from "@clerk/nextjs";
+import { useApi } from "@/lib/api";
 import { Plus, SearchX, Tags } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { filterCategories, summarize } from "@/lib/category";
-import type {
-  Category,
-  CategoryInput,
-  SortKey,
-  Tab,
-  ViewMode,
-} from "@/lib/types";
+import type { Category, SortKey, Tab, ViewMode } from "@/lib/types";
 import { CategoryCard } from "./CategoryCard";
 import { CategoryDialog } from "./CategoryDialog";
 import { CategoriesHeader } from "./CategoryHeader";
@@ -18,11 +14,12 @@ import { CategoryStats } from "./CategoryStats";
 import { CategoryTable } from "./CategoryTable";
 import { CategoryToolbar } from "./CategoryToolbar";
 
-type Props = { initialCategories: Category[] };
-
-/** Client container: owns the state and composes the presentational pieces. */
-export function CategoriesView({ initialCategories }: Props) {
-  const [categories, setCategories] = useState(initialCategories);
+export function CategoriesView() {
+  const { isLoaded, isSignedIn } = useAuth();
+  const api = useApi();
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("all");
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<SortKey>("name");
@@ -30,42 +27,56 @@ export function CategoriesView({ initialCategories }: Props) {
   const [view, setView] = useState<ViewMode>("grid");
   const [dialog, setDialog] = useState<{
     open: boolean;
-    category: Category | null;
+    category: Category | null; // null = create
   }>({ open: false, category: null });
+
+  const load = useCallback(async () => {
+    try {
+      // include archived so the "Show archived" toggle works client-side
+      setCategories(await api<Category[]>("/categories?includeArchived=true"));
+      setError(null);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }, [api]);
+
+  useEffect(() => {
+    if (isLoaded && isSignedIn) load();
+  }, [isLoaded, isSignedIn, load]);
+
+  // Add a new category, or merge an edited/archived one. The merge keeps
+  // transactionCount and totalMinor, which the API doesn't return on these calls.
+  const saveCategory = (saved: Category) =>
+    setCategories((xs) =>
+      xs.some((c) => c.id === saved.id)
+        ? xs.map((c) => (c.id === saved.id ? { ...c, ...saved } : c))
+        : [...xs, saved],
+    );
+
+  const toggleArchive = async (id: string) => {
+    const archived = categories.find((c) => c.id === id)?.archiveAt;
+    try {
+      const updated = await api<Category>(
+        `/categories/${id}/${archived ? "restore" : "archive"}`,
+        { method: "PATCH" },
+      );
+      saveCategory(updated);
+      setError(null);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+
+  const openCreate = () => setDialog({ open: true, category: null });
+  const openEdit = (c: Category) => setDialog({ open: true, category: c });
 
   const stats = useMemo(() => summarize(categories), [categories]);
   const visible = useMemo(
     () => filterCategories(categories, { tab, query, showArchived, sort }),
     [categories, tab, query, showArchived, sort],
   );
-
-  const openCreate = () => setDialog({ open: true, category: null });
-  const openEdit = (c: Category) => setDialog({ open: true, category: c });
-
-  const save = (data: CategoryInput, id?: string) =>
-    setCategories((xs) =>
-      id
-        ? xs.map((c) => (c.id === id ? { ...c, ...data } : c))
-        : [
-            ...xs,
-            {
-              ...data,
-              id: crypto.randomUUID(),
-              archivedAt: null,
-              transactionCount: 0,
-              totalMinor: 0,
-            },
-          ],
-    );
-
-  const toggleArchive = (id: string) =>
-    setCategories((xs) =>
-      xs.map((c) =>
-        c.id === id
-          ? { ...c, archivedAt: c.archivedAt ? null : new Date().toISOString() }
-          : c,
-      ),
-    );
 
   return (
     <div className="relative -mx-6 -my-8 min-h-[calc(100%+4rem)] overflow-hidden bg-gradient-hero p-6 sm:-mx-9 sm:-my-10 sm:min-h-[calc(100%+5rem)] sm:p-8">
@@ -89,6 +100,17 @@ export function CategoriesView({ initialCategories }: Props) {
         onAdd={openCreate}
       />
 
+      {error && (
+        <p role="alert" className="relative mt-4 text-sm text-destructive">
+          {error}
+        </p>
+      )}
+      {loading && (
+        <p className="relative mt-4 text-sm text-muted-foreground">
+          Loading categories...
+        </p>
+      )}
+
       <section className="relative mt-5 animate-fade-up animate-delay-300">
         {visible.length > 0 && view === "grid" && (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -100,13 +122,6 @@ export function CategoriesView({ initialCategories }: Props) {
                 onToggleArchive={toggleArchive}
               />
             ))}
-            <button
-              type="button"
-              onClick={openCreate}
-              className="tone-primary tone-surface flex min-h-[5.5rem] items-center justify-center gap-2 rounded-2xl border border-dashed text-sm font-semibold transition hover:-translate-y-0.5 hover:shadow-soft"
-            >
-              <Plus className="tone-text h-5 w-5" /> Create Custom Category
-            </button>
           </div>
         )}
 
@@ -118,7 +133,7 @@ export function CategoriesView({ initialCategories }: Props) {
           />
         )}
 
-        {visible.length === 0 && (
+        {!loading && visible.length === 0 && (
           <div className="rounded-2xl border border-dashed p-12 text-center text-muted-foreground">
             {categories.length === 0 ? (
               <Tags className="mx-auto mb-3 h-8 w-8" />
@@ -147,7 +162,7 @@ export function CategoriesView({ initialCategories }: Props) {
         onOpenChange={(open) => setDialog((d) => ({ ...d, open }))}
         category={dialog.category}
         categories={categories}
-        onSave={save}
+        onAdd={saveCategory}
       />
     </div>
   );

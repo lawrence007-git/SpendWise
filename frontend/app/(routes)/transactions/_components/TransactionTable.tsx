@@ -1,5 +1,12 @@
 import Link from "next/link";
-import { ArrowRight, BarChart3, Clock, Filter, Search } from "lucide-react";
+import {
+  ArrowRight,
+  BarChart3,
+  Clock,
+  Filter,
+  Search,
+  Plus,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -31,7 +38,8 @@ type Props = {
   onQueryChange: (v: string) => void;
   typeFilter: TxType | "all";
   onTypeFilterChange: (v: TxType | "all") => void;
-  onAdd: (t: Transaction) => void;
+  onAdd: () => void;
+  onEdit: (t: Transaction) => void;
   onDelete: (id: string) => void;
   viewAllHref?: string;
 };
@@ -77,7 +85,13 @@ export function TransactionsTable(p: Props) {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <AddTransactionDialog accounts={p.accounts} onAdd={p.onAdd} />
+        <Button
+          disabled={p.accounts.length === 0}
+          onClick={p.onAdd}
+          className="rounded-lg border-0 bg-gradient-brand px-5 text-primary-foreground shadow-soft hover:opacity-90"
+        >
+          <Plus className="mr-1 h-4 w-4" /> Add Transaction
+        </Button>
       </div>
 
       <Table>
@@ -98,6 +112,7 @@ export function TransactionsTable(p: Props) {
               key={t.id}
               transaction={t}
               account={p.accounts.find((a) => a.id === t.accountId)}
+              onEdit={p.onEdit}
               onDelete={p.onDelete}
             />
           ))}

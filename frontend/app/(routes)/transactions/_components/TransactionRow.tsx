@@ -16,10 +16,16 @@ import { formatDate, signedAmount } from "@/lib/transaction";
 type Props = {
   transaction: Transaction;
   account?: TxAccount;
+  onEdit: (t: Transaction) => void;
   onDelete: (id: string) => void;
 };
 
-export function TransactionRow({ transaction: t, account, onDelete }: Props) {
+export function TransactionRow({
+  transaction: t,
+  account,
+  onEdit,
+  onDelete,
+}: Props) {
   const RowIcon = CATEGORY_ICONS.receipt;
   const AccIcon = account ? KIND[account.accountType].icon : Wallet;
   const type = TYPE_STYLE[t.transactionType];
@@ -72,6 +78,7 @@ export function TransactionRow({ transaction: t, account, onDelete }: Props) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => onEdit(t)}>Edit</DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => onDelete(t.id)}
               className="text-destructive"

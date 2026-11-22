@@ -8,6 +8,7 @@ import {
   pgEnum,
   index,
   date,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 export const transactionTypeEnum = pgEnum("transaction_type", [
@@ -18,6 +19,36 @@ export const accountTypeEnum = pgEnum("account_type", [
   "bank",
   "cash",
   "ewallet",
+]);
+
+export const categoryColorEnum = pgEnum("category_color", [
+  "primary",
+  "success",
+  "glow",
+  "amber",
+  "destructive",
+  "violet",
+  "blue",
+  "pink",
+]);
+
+export const categoryIconEnum = pgEnum("category_icon", [
+  "cart",
+  "utensils",
+  "home",
+  "car",
+  "zap",
+  "briefcase",
+  "laptop",
+  "gift",
+  "heart",
+  "plane",
+  "book",
+  "coffee",
+  "wallet",
+  "music",
+  "paw",
+  "receipt",
 ]);
 
 export const users = pgTable("users", {
@@ -71,9 +102,38 @@ export const transactions = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
   },
   (t) => [
     index("transactions_owner_date_idx").on(t.ownerId, t.transactionDate),
     index("transactions_account_idx").on(t.accountId),
+  ],
+);
+
+export const categories = pgTable(
+  "categories",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ownerId: uuid("owner_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 100 }).notNull(),
+    transactionType: transactionTypeEnum("transaction_type").notNull(),
+    color: categoryColorEnum("color").notNull().default("primary"),
+    icon: categoryIconEnum("icon").notNull().default("receipt"),
+    archiveAt: timestamp("archived_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => [
+    index("categories_owner_idx").on(t.ownerId),
+    uniqueIndex("categories_owner_type_name_uq").on(
+      t.ownerId,
+      t.transactionType,
+      t.name,
+    ),
   ],
 );

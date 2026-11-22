@@ -14,7 +14,7 @@ export function TransactionsHeader() {
 
       <header className="mt-4 min-h-[8rem]">
         <HeroIllustration />
-        <div className="relative anime-fade-up">
+        <div className="relative animate-fade-up">
           <h1 className="relative text-5xl font-extrabold tracking-tight">
             Transactions
           </h1>

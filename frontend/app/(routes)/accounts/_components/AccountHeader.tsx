@@ -13,16 +13,14 @@ export function AccountsHeader() {
         <span className="font-medium text-primary">Accounts</span>
       </nav>
 
-      {/* No `relative` or animation on this element: the art anchors to the page wrapper's top-right corner.
-          The min-height only applies where the art is visible (xl and up). */}
-      <header className="mt-4 xl:min-h-[9.5rem]">
+      <header className="mt-4 min-h-[8rem]">
         <AccountHero />
 
         <div className="relative animate-fade-up">
-          <h1 className="text-4xl font-extrabold tracking-tight">
+          <h1 className="relative text-5xl font-extrabold tracking-tight">
             Your accounts
           </h1>
-          <p className="mt-1 text-muted-foreground">
+          <p className="relative mt-2 text-muted-foreground">
             Every balance, all in one place.
           </p>
         </div>

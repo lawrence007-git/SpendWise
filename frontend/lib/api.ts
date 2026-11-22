@@ -9,7 +9,12 @@ export function useApi() {
 
   return useCallback(
     async <T>(path: string, options: RequestInit = {}): Promise<T> => {
-      const token = await getToken();
+      let token = await getToken();
+      if (!token) {
+        // Clerk can report signed-in a moment before a token is available after a refresh
+        await new Promise((r) => setTimeout(r, 300));
+        token = await getToken({ skipCache: true });
+      }
 
       const headers = new Headers(options.headers);
       // Only set JSON content-type when sending a body (bodiless PATCH would fail otherwise)

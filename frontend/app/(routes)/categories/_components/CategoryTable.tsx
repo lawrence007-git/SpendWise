@@ -38,7 +38,7 @@ export function CategoryTable({ categories, onEdit, onToggleArchive }: Props) {
             const Icon = CATEGORY_ICONS[c.icon];
             const tone = CATEGORY_COLORS[c.color].tone;
             const type = TYPE_STYLE[c.transactionType];
-            const archived = !!c.archivedAt;
+            const archived = !!c.archiveAt;
             const income = c.transactionType === "income";
             return (
               <TableRow key={c.id} className={cn(archived && "opacity-60")}>

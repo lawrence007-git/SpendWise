@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,21 +23,26 @@ import {
   categorySchema,
   isDuplicate,
 } from "@/lib/category";
-import type { Category, CategoryInput, TxType } from "@/lib/types";
+import type {
+  Category,
+  CategoryColor,
+  CategoryIcon,
+  TxType,
+} from "@/lib/types";
 
 type Props = {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   category: Category | null; // null = create
   categories: Category[]; // for the duplicate-name check
-  onSave: (data: CategoryInput, id?: string) => void;
+  onAdd: (c: Category) => void;
 };
 
-const blank = (): CategoryInput => ({
+const empty = () => ({
   name: "",
-  transactionType: "expense",
-  color: "primary",
-  icon: "cart",
+  transactionType: "expense" as TxType,
+  color: "primary" as CategoryColor,
+  icon: "cart" as CategoryIcon,
 });
 
 export function CategoryDialog({
@@ -44,12 +50,17 @@ export function CategoryDialog({
   onOpenChange,
   category,
   categories,
-  onSave,
+  onAdd,
 }: Props) {
-  const [f, setF] = useState<CategoryInput>(blank);
+  const api = useApi();
+  const [f, setF] = useState(empty);
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
-  // Reset the form whenever the dialog opens (create or edit)
+  const editing = !!category;
+  const Preview = CATEGORY_ICONS[f.icon];
+
+  // Load the category into the form (or reset it) each time the dialog opens
   useEffect(() => {
     if (!open) return;
     setF(
@@ -60,27 +71,40 @@ export function CategoryDialog({
             color: category.color,
             icon: category.icon,
           }
-        : blank(),
+        : empty(),
     );
     setError(null);
   }, [open, category]);
 
-  // Changing the type of a category that already has transactions would break type compatibility
-  const typeLocked = !!category && (category.transactionCount ?? 0) > 0;
-  const Preview = CATEGORY_ICONS[f.icon];
-
-  const submit = () => {
+  const submit = async () => {
     const p = categorySchema.safeParse(f);
     if (!p.success) return setError(p.error.issues[0].message);
     if (
       isDuplicate(categories, p.data.name, p.data.transactionType, category?.id)
     ) {
       return setError(
-        `You already have a ${p.data.transactionType} category named “${p.data.name.trim()}”.`,
+        `You already have a ${p.data.transactionType} category named “${p.data.name}”.`,
       );
     }
-    onSave(p.data, category?.id);
-    onOpenChange(false);
+
+    setSaving(true);
+    setError(null);
+    try {
+      // The API ignores transactionType on PATCH, so the same body works for both
+      const saved = await api<Category>(
+        editing ? `/categories/${category.id}` : "/categories",
+        {
+          method: editing ? "PATCH" : "POST",
+          body: JSON.stringify(p.data),
+        },
+      );
+      onAdd(saved);
+      onOpenChange(false);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -88,7 +112,7 @@ export function CategoryDialog({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {category ? "Edit category" : "New category"}
+            {editing ? "Edit category" : "New category"}
           </DialogTitle>
           <DialogDescription>
             Pick a name, type, color and icon.
@@ -137,8 +161,7 @@ export function CategoryDialog({
               <button
                 key={t}
                 type="button"
-                disabled={typeLocked}
-                aria-pressed={f.transactionType === t}
+                disabled={editing}
                 onClick={() => setF({ ...f, transactionType: t })}
                 className={cn(
                   "rounded-lg border py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60",
@@ -151,9 +174,9 @@ export function CategoryDialog({
               </button>
             ))}
           </div>
-          {typeLocked && (
+          {editing && (
             <p className="text-xs text-muted-foreground">
-              The type is locked because this category already has transactions.
+              The type can’t be changed after a category is created.
             </p>
           )}
         </div>
@@ -166,7 +189,6 @@ export function CategoryDialog({
                 key={k}
                 type="button"
                 aria-label={CATEGORY_COLORS[k].label}
-                aria-pressed={f.color === k}
                 onClick={() => setF({ ...f, color: k })}
                 className={cn(
                   CATEGORY_COLORS[k].tone,
@@ -184,18 +206,16 @@ export function CategoryDialog({
           <div className="grid grid-cols-8 gap-2">
             {ICON_KEYS.map((k) => {
               const Icon = CATEGORY_ICONS[k];
-              const on = f.icon === k;
               return (
                 <button
                   key={k}
                   type="button"
                   aria-label={k}
-                  aria-pressed={on}
                   onClick={() => setF({ ...f, icon: k })}
                   className={cn(
                     CATEGORY_COLORS[f.color].tone,
                     "grid h-9 w-9 place-items-center rounded-lg border transition",
-                    on
+                    f.icon === k
                       ? "tone-icon tone-border"
                       : "text-muted-foreground hover:bg-muted",
                   )}
@@ -216,9 +236,14 @@ export function CategoryDialog({
         <DialogFooter>
           <Button
             onClick={submit}
+            disabled={saving}
             className="bg-gradient-brand text-primary-foreground hover:opacity-90"
           >
-            {category ? "Save changes" : "Create category"}
+            {saving
+              ? "Saving..."
+              : editing
+                ? "Save changes"
+                : "Create category"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -39,6 +39,7 @@ export type Transaction = {
   description: string;
   notes: string | null;
   createdAt: string;
+  updatedAt: string;
 };
 
 export type CategoryColor =
@@ -75,17 +76,10 @@ export type Category = {
   transactionType: TxType;
   color: CategoryColor;
   icon: CategoryIcon;
-  archivedAt: string | null;
-  /** Aggregates, e.g. from GET /reports/categories. Optional. */
+  archiveAt: string | null;
   transactionCount?: number;
   totalMinor?: number; // integer centavos
 };
-
-/** What the create/edit form submits. */
-export type CategoryInput = Pick<
-  Category,
-  "name" | "transactionType" | "color" | "icon"
->;
 
 /* ---------- UI state ---------- */
 export type Tab = "all" | TxType;
