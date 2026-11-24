@@ -9,6 +9,7 @@ import {
   index,
   date,
   uniqueIndex,
+  smallint,
 } from "drizzle-orm/pg-core";
 
 export const transactionTypeEnum = pgEnum("transaction_type", [
@@ -93,6 +94,9 @@ export const transactions = pgTable(
     accountId: uuid("account_id")
       .notNull()
       .references(() => accounts.id, { onDelete: "cascade" }),
+    categoryId: uuid("category_id").references(() => categories.id, {
+      onDelete: "set null",
+    }),
     transactionType: transactionTypeEnum("type").notNull(),
     amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
     currency: varchar("currency", { length: 3 }).notNull(),
@@ -134,6 +138,43 @@ export const categories = pgTable(
       t.ownerId,
       t.transactionType,
       t.name,
+    ),
+  ],
+);
+
+export const budgets = pgTable(
+  "budgets",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ownerId: uuid("owner_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    categoryId: uuid("category_id")
+      .notNull()
+      .references(() => categories.id, { onDelete: "cascade" }),
+    periodMonth: smallint("period_month").notNull(),
+    periodYear: smallint("period_year").notNull(),
+    amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+    currency: varchar("currency", { length: 3 }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (t) => [
+    index("budgets_owner_period_idx").on(
+      t.ownerId,
+      t.periodYear,
+      t.periodMonth,
+    ),
+    uniqueIndex("budgets_owner_category_period_uq").on(
+      t.ownerId,
+      t.categoryId,
+      t.periodYear,
+      t.periodMonth,
     ),
   ],
 );

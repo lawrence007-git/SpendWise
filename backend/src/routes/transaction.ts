@@ -1,12 +1,14 @@
 import { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { db } from "../db/index.js";
-import { accounts, transactions } from "../db/schema.js";
+import { accounts, categories, transactions } from "../db/schema.js";
 import { and, desc, eq, gte, isNull, lte } from "drizzle-orm";
 import { requireUser } from "../auth/requireUser.js";
 
 const createTransactionSchema = z.object({
   accountId: z.uuid("Invalid account id"),
+  // null or omitted = uncategorized
+  categoryId: z.uuid("Invalid category id").nullable().optional(),
   transactionType: z.enum(["income", "expense"], {
     message: "Type must be income or expense",
   }),
@@ -35,6 +37,21 @@ const listQuerySchema = z.object({
   to: z.iso.date().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(50),
 });
+
+/** The category must belong to the user and not be archived. */
+async function findCategory(userId: string, categoryId: string) {
+  const [category] = await db
+    .select()
+    .from(categories)
+    .where(
+      and(
+        eq(categories.id, categoryId),
+        eq(categories.ownerId, userId),
+        isNull(categories.archiveAt),
+      ),
+    );
+  return category;
+}
 
 export async function transactionRoutes(app: FastifyInstance) {
   app.get("/transactions", { preHandler: requireUser }, async (req, reply) => {
@@ -103,6 +120,7 @@ export async function transactionRoutes(app: FastifyInstance) {
     }
     const {
       accountId,
+      categoryId,
       transactionType,
       amount,
       transactionDate,
@@ -124,11 +142,24 @@ export async function transactionRoutes(app: FastifyInstance) {
       return reply.status(404).send({ error: "Account not found" });
     }
 
+    if (categoryId) {
+      const category = await findCategory(userId, categoryId);
+      if (!category) {
+        return reply.status(404).send({ error: "Category not found" });
+      }
+      if (category.transactionType !== transactionType) {
+        return reply
+          .status(400)
+          .send({ error: "Category type must match the transaction type" });
+      }
+    }
+
     const [created] = await db
       .insert(transactions)
       .values({
         ownerId: userId,
         accountId,
+        categoryId: categoryId ?? null,
         transactionType,
         amount,
         currency: account.currency,
@@ -160,6 +191,38 @@ export async function transactionRoutes(app: FastifyInstance) {
           error: "Validation Failed",
           details: z.flattenError(v.error),
         });
+      }
+
+      // Changing the category or the type: re-check that they still match.
+      const { categoryId, transactionType } = v.data;
+      if (categoryId !== undefined || transactionType !== undefined) {
+        const [existing] = await db
+          .select()
+          .from(transactions)
+          .where(
+            and(
+              eq(transactions.id, p.data.id),
+              eq(transactions.ownerId, userId),
+            ),
+          );
+        if (!existing)
+          return reply.status(404).send({ error: "Transaction not found" });
+
+        const nextType = transactionType ?? existing.transactionType;
+        const nextCategoryId =
+          categoryId === undefined ? existing.categoryId : categoryId;
+
+        if (nextCategoryId) {
+          const category = await findCategory(userId, nextCategoryId);
+          if (!category) {
+            return reply.status(404).send({ error: "Category not found" });
+          }
+          if (category.transactionType !== nextType) {
+            return reply.status(400).send({
+              error: "Category type must match the transaction type",
+            });
+          }
+        }
       }
 
       const [updated] = await db

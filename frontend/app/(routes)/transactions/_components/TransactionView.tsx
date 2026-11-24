@@ -3,7 +3,7 @@
 import { useMemo, useState, useCallback, useEffect } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { useApi } from "@/lib/api";
-import type { Transaction, TxAccount, TxType } from "@/lib/types";
+import type { Transaction, Category, TxAccount, TxType } from "@/lib/types";
 import { filterTransactions, summarize } from "@/lib/transaction";
 import { RecurringCard } from "./RecurringCard";
 import { SpendingInsights } from "./Insight";
@@ -32,6 +32,7 @@ export function TransactionsView({
   const { isLoaded, isSignedIn } = useAuth();
   const api = useApi();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [accounts, setAccounts] = useState<TxAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -55,12 +56,14 @@ export function TransactionsView({
 
   const load = useCallback(async () => {
     try {
-      const [tx, accs] = await Promise.all([
+      const [tx, accs, cats] = await Promise.all([
         api<Transaction[]>("/transactions?limit=100"),
         api<TxAccount[]>("/accounts"),
+        api<Category[]>("/categories?includeArchived=true"),
       ]);
       setTransactions(tx);
       setAccounts(accs);
+      setCategories(cats);
       setError(null);
     } catch (e) {
       setError((e as Error).message);
@@ -114,6 +117,7 @@ export function TransactionsView({
         <TransactionsTable
           transactions={rows}
           accounts={accounts}
+          categories={categories}
           query={query}
           onQueryChange={setQuery}
           typeFilter={typeFilter}
@@ -129,6 +133,7 @@ export function TransactionsView({
           onOpenChange={(open) => setDialog((d) => ({ ...d, open }))}
           transaction={dialog.transaction}
           accounts={accounts}
+          categories={categories}
           onSaved={saveTransaction}
         />
 

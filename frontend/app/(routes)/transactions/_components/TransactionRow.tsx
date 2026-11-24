@@ -9,13 +9,14 @@ import {
 import { TableCell, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { KIND } from "@/lib/account";
-import { CATEGORY_ICONS, TYPE_STYLE } from "@/lib/transaction";
-import type { Transaction, TxAccount } from "@/lib/types";
-import { formatDate, signedAmount } from "@/lib/transaction";
+import { CATEGORY_ICONS, CATEGORY_COLORS } from "@/lib/category";
+import type { Category, Transaction, TxAccount } from "@/lib/types";
+import { formatDate, signedAmount, TYPE_STYLE } from "@/lib/transaction";
 
 type Props = {
   transaction: Transaction;
   account?: TxAccount;
+  category?: Category;
   onEdit: (t: Transaction) => void;
   onDelete: (id: string) => void;
 };
@@ -23,10 +24,11 @@ type Props = {
 export function TransactionRow({
   transaction: t,
   account,
+  category,
   onEdit,
   onDelete,
 }: Props) {
-  const RowIcon = CATEGORY_ICONS.receipt;
+  const RowIcon = CATEGORY_ICONS[category?.icon ?? "receipt"];
   const AccIcon = account ? KIND[account.accountType].icon : Wallet;
   const type = TYPE_STYLE[t.transactionType];
 
@@ -36,10 +38,35 @@ export function TransactionRow({
         {formatDate(t.transactionDate)}
       </TableCell>
       <TableCell>
-        <span className="flex items-center gap-2 font-medium">
-          <RowIcon className="h-4 w-4 shrink-0 text-primary" />
+        <span
+          className={cn(
+            category && CATEGORY_COLORS[category.color].tone,
+            "flex items-center gap-2 font-medium",
+          )}
+        >
+          <RowIcon
+            className={cn(
+              "h-4 w-4 shrink-0",
+              category ? "tone-text" : "text-primary",
+            )}
+          />
           {t.description}
         </span>
+      </TableCell>
+      <TableCell>
+        {category ? (
+          <span
+            className={cn(
+              CATEGORY_COLORS[category.color].tone,
+              "flex items-center gap-2",
+            )}
+          >
+            <span className="tone-dot h-2 w-2 shrink-0 rounded-full" />
+            {category.name}
+          </span>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        )}
       </TableCell>
       <TableCell>
         <span className="flex items-center gap-2">

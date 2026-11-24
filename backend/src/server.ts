@@ -6,6 +6,7 @@ import { requireUser } from "./auth/requireUser.js";
 import { accountRoutes } from "./routes/account.js";
 import { transactionRoutes } from "./routes/transaction.js";
 import { categoryRoutes } from "./routes/category.js";
+import { budgetRoutes } from "./routes/budget.js";
 import Fastify, { type FastifyError } from "fastify";
 
 const app = Fastify({ logger: true });
@@ -38,6 +39,7 @@ app.get("/me", { preHandler: requireUser }, async (req) => {
 await app.register(accountRoutes);
 await app.register(transactionRoutes);
 await app.register(categoryRoutes);
+await app.register(budgetRoutes);
 
 await app.listen({
   port: Number(process.env.PORT ?? 4000),

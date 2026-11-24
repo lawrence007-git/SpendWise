@@ -383,6 +383,19 @@
   animation-delay: 0.5s;
 }
 
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+/* the new theme draws on top and is revealed by the growing circle */
+::view-transition-old(root) {
+  z-index: 1;
+}
+::view-transition-new(root) {
+  z-index: 2147483646;
+}
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

@@ -9,13 +9,16 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { flushSync } from "react-dom";
 
 type Theme = "light" | "dark";
+/** Viewport point (px) the circle grows from, e.g. the center of the toggle button */
+type Origin = { x: number; y: number };
 
 type ThemeContextValue = {
   theme: Theme;
-  toggle: () => void;
-  setTheme: (t: Theme) => void;
+  toggle: (origin?: Origin) => void;
+  setTheme: (t: Theme, origin?: Origin) => void;
 };
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
@@ -42,16 +45,62 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
-  const setTheme = useCallback((t: Theme) => {
+  // The actual theme change: state, <html> class, and storage
+  const apply = (t: Theme) => {
     setThemeState(t);
     document.documentElement.classList.toggle("dark", t === "dark");
     try {
       localStorage.setItem(STORAGE_KEY, t);
     } catch {}
+  };
+
+  const setTheme = useCallback((t: Theme, origin?: Origin) => {
+    const root = document.documentElement;
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+
+    // No click position, reduced motion, or no browser support: switch instantly
+    if (!origin || reduceMotion || !document.startViewTransition) {
+      apply(t);
+      return;
+    }
+
+    // Pause the "theme-ready" CSS color transitions so they don't blur the snapshots
+    root.classList.remove("theme-ready");
+
+    const transition = document.startViewTransition(() => {
+      flushSync(() => apply(t)); // the new theme must be in the DOM before the browser captures it
+    });
+
+    // radius needed for the circle to reach the farthest corner of the screen
+    const { x, y } = origin;
+    const radius = Math.hypot(
+      Math.max(x, window.innerWidth - x),
+      Math.max(y, window.innerHeight - y),
+    );
+
+    transition.ready.then(() => {
+      root.animate(
+        {
+          clipPath: [
+            `circle(0px at ${x}px ${y}px)`,
+            `circle(${radius}px at ${x}px ${y}px)`,
+          ],
+        },
+        {
+          duration: 600,
+          easing: "ease-in-out",
+          pseudoElement: "::view-transition-new(root)",
+        },
+      );
+    });
+
+    transition.finished.finally(() => root.classList.add("theme-ready"));
   }, []);
 
   const toggle = useCallback(
-    () => setTheme(theme === "dark" ? "light" : "dark"),
+    (origin?: Origin) => setTheme(theme === "dark" ? "light" : "dark", origin),
     [theme, setTheme],
   );
 

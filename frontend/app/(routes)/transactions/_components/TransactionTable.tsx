@@ -27,13 +27,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { TYPE_FILTERS } from "@/lib/transaction";
-import type { Transaction, TxAccount, TxType } from "@/lib/types";
-import { AddTransactionDialog } from "./TransactionDialog";
+import type { Transaction, TxAccount, TxType, Category } from "@/lib/types";
 import { TransactionRow } from "./TransactionRow";
 
 type Props = {
   transactions: Transaction[];
   accounts: TxAccount[];
+  categories: Category[];
   query: string;
   onQueryChange: (v: string) => void;
   typeFilter: TxType | "all";
@@ -99,7 +99,7 @@ export function TransactionsTable(p: Props) {
           <TableRow className="bg-muted/50 hover:bg-muted/50">
             <TableHead>Date</TableHead>
             <TableHead>Description</TableHead>
-
+            <TableHead>Category</TableHead>
             <TableHead>Account</TableHead>
             <TableHead>Type</TableHead>
             <TableHead className="text-right">Amount</TableHead>
@@ -112,6 +112,7 @@ export function TransactionsTable(p: Props) {
               key={t.id}
               transaction={t}
               account={p.accounts.find((a) => a.id === t.accountId)}
+              category={p.categories.find((c) => c.id === t.categoryId)}
               onEdit={p.onEdit}
               onDelete={p.onDelete}
             />
@@ -119,7 +120,7 @@ export function TransactionsTable(p: Props) {
           {p.transactions.length === 0 && (
             <TableRow>
               <TableCell
-                colSpan={6}
+                colSpan={7}
                 className="py-10 text-center text-muted-foreground"
               >
                 No transactions found.

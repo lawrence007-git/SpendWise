@@ -57,6 +57,20 @@
       "when": 1795325951753,
       "tag": "0007_military_lord_hawal",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1795411541929,
+      "tag": "0008_military_madrox",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1795412161547,
+      "tag": "0009_mean_zaran",
+      "breakpoints": true
     }
   ]
 }

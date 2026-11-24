@@ -23,22 +23,25 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { CATEGORY_COLORS, CATEGORY_ICONS } from "@/lib/category";
 import { addTransactionSchema, todayISO, TYPE_STYLE } from "@/lib/transaction";
-import type { Transaction, TxAccount, TxType } from "@/lib/types";
+import type { Category, Transaction, TxAccount, TxType } from "@/lib/types";
 
 type Props = {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   transaction: Transaction | null; // null = create
   accounts: TxAccount[];
+  categories: Category[];
   onSaved: (t: Transaction) => void;
 };
-
+const NO_CATEGORY = "none";
 const empty = () => ({
   type: "expense" as TxType,
   description: "",
   amount: "",
   accountId: "",
+  categoryId: NO_CATEGORY,
   date: "",
 });
 
@@ -47,6 +50,7 @@ export function AddTransactionDialog({
   onOpenChange,
   transaction,
   accounts,
+  categories,
   onSaved,
 }: Props) {
   const api = useApi();
@@ -65,6 +69,7 @@ export function AddTransactionDialog({
             description: transaction.description,
             amount: String(transaction.amount),
             accountId: transaction.accountId,
+            categoryId: transaction.categoryId ?? NO_CATEGORY,
             date: transaction.transactionDate.slice(0, 10),
           }
         : { ...empty(), date: todayISO() },
@@ -72,9 +77,16 @@ export function AddTransactionDialog({
     setError(null);
   }, [open, transaction]);
 
+  const categoryOptions = categories.filter(
+    (c) =>
+      c.transactionType === f.type && (!c.archiveAt || c.id === f.categoryId),
+  );
+
   const submit = async () => {
     const p = addTransactionSchema.safeParse(f);
     if (!p.success) return setError(p.error.issues[0].message);
+
+    const categoryId = f.categoryId === NO_CATEGORY ? null : f.categoryId;
 
     setSaving(true);
     setError(null);
@@ -89,6 +101,7 @@ export function AddTransactionDialog({
             amount: p.data.amount, // string, as the API expects
             transactionDate: p.data.date, // form `date` -> API `transactionDate`
             description: p.data.description,
+            ...(editing || categoryId ? { categoryId } : {}),
           }),
         },
       );
@@ -125,7 +138,13 @@ export function AddTransactionDialog({
             <button
               key={t}
               type="button"
-              onClick={() => setF({ ...f, type: t })}
+              onClick={() =>
+                setF((prev) =>
+                  prev.type === t
+                    ? prev
+                    : { ...prev, type: t, categoryId: NO_CATEGORY },
+                )
+              }
               className={cn(
                 "rounded-lg border py-2 text-sm font-medium outline-none ring-0 transition focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0",
                 f.type === t
@@ -170,23 +189,55 @@ export function AddTransactionDialog({
           </div>
         </div>
 
-        <div className="space-y-2">
-          <Label>Account</Label>
-          <Select
-            value={f.accountId}
-            onValueChange={(v) => setF({ ...f, accountId: v })}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select Account" />
-            </SelectTrigger>
-            <SelectContent>
-              {accounts.map((a) => (
-                <SelectItem key={a.id} value={a.id}>
-                  {a.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <Label>Account</Label>
+            <Select
+              value={f.accountId}
+              onValueChange={(v) => setF({ ...f, accountId: v })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select Account" />
+              </SelectTrigger>
+              <SelectContent>
+                {accounts.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>
+                    {a.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Category</Label>
+            <Select
+              value={f.categoryId}
+              onValueChange={(v) => setF({ ...f, categoryId: v })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="No category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NO_CATEGORY}>No category</SelectItem>
+                {categoryOptions.map((c) => {
+                  const Icon = CATEGORY_ICONS[c.icon];
+                  return (
+                    <SelectItem key={c.id} value={c.id}>
+                      <span
+                        className={cn(
+                          CATEGORY_COLORS[c.color].tone,
+                          "flex items-center gap-2",
+                        )}
+                      >
+                        <Icon className="tone-text h-4 w-4" /> {c.name}
+                      </span>
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {error && (
